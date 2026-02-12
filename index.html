@@ -28,10 +28,16 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes bounceUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        
+        /* Custom scrollbar for modals */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 overflow-hidden">
-    <div id="root"></div>
+<body class="bg-black text-slate-100 overflow-hidden h-screen w-screen">
+    <div id="root" class="h-full w-full"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
@@ -53,7 +59,7 @@
 
         // --- ICON COMPONENTS ---
         const Icon = ({ path, className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
         );
         const Icons = {
             Lock: (p) => <Icon {...p} path={<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>} />,
@@ -67,7 +73,7 @@
             Activity: (p) => <Icon {...p} path={<><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>} />,
             User: (p) => <Icon {...p} path={<><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />,
             DoorOpen: (p) => <Icon {...p} path={<><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></>} />,
-            Sparkles: (p) => <Icon {...p} path={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 9h4"/><path d="M3 5h4"/></>} />,
+            Sparkles: (p) => <Icon {...p} path={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 9h4"/><path d="M3 5h4"/></>} />,
             MessageSquare: (p) => <Icon {...p} path={<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></>} />,
             Loader: (p) => <Icon {...p} path={<><path d="M21 12a9 9 0 1 1-6.219-8.56"/></>} />,
             AlertTriangle: (p) => <Icon {...p} path={<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>} />,
@@ -80,7 +86,6 @@
                 title: 'Dosing Calculation Protocol',
                 type: 'math',
                 position: { bottom: '5%', right: '10%', width: '15%', height: '30%' },
-                // UPDATED: Patient weight changed to 176 lbs (approx 80kg)
                 question: "Patient weight: 176 lbs. \nStandard IV tPA dose: 0.9 mg/kg. \nMax dose: 90 mg. \n\nCalculate the BOLUS dose (10% of total) in mg. (Round weight to nearest whole kg).",
                 correctAnswer: "7.2",
                 digit: '4',
@@ -114,7 +119,6 @@
                 type: 'mc',
                 position: { top: '15%', right: '2%', width: '20%', height: '40%' },
                 question: "A patient has a Large Vessel Occlusion (LVO) in the internal carotid artery. According to DAWN and DEFUSE-3 trials, mechanical thrombectomy is indicated up to how many hours after LKW in select patients?",
-                // UPDATED: Moved digit here to prevent 'undefined' error
                 digit: '2', 
                 options: [
                 { id: 'a', text: "6 hours", correct: false },
@@ -133,7 +137,6 @@
                 type: 'mc',
                 position: { top: '28%', right: '25%', width: '10%', height: '35%' },
                 question: "You examine a patient who has significant weakness in the LEFT LEG, but minimal weakness in the left arm and face. They also appear apathetic (abulia). Which vascular territory is most likely affected?",
-                // UPDATED: Moved digit here to prevent 'undefined' error
                 digit: '9',
                 options: [
                 { id: 'a', text: "Left Middle Cerebral Artery (MCA)", correct: false },
@@ -198,44 +201,31 @@
                 return "bg-slate-700 border-slate-600";
             };
 
-            // Virtual Keyboard
             const rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 
             return (
                 <div className="flex flex-col items-center w-full max-w-sm mx-auto">
                     <div className="mb-4 space-y-1">
-                        {/* Previous Guesses */}
                         {guesses.map((guess, i) => (
                             <div key={i} className="flex gap-1 justify-center">
                                 {guess.split('').map((char, j) => (
-                                    <div key={j} className={`w-8 h-8 flex items-center justify-center border font-bold text-white rounded ${getLetterColor(char, j, guess)}`}>
-                                        {char}
-                                    </div>
+                                    <div key={j} className={`w-8 h-8 flex items-center justify-center border font-bold text-white rounded ${getLetterColor(char, j, guess)}`}>{char}</div>
                                 ))}
                             </div>
                         ))}
-                        {/* Current Guess */}
                         {!solved && guesses.length < 6 && (
                             <div className="flex gap-1 justify-center">
                                 {[...Array(maxLength)].map((_, i) => (
-                                    <div key={i} className="w-8 h-8 flex items-center justify-center border border-slate-500 font-bold text-white bg-slate-800 rounded">
-                                        {currentGuess[i] || ""}
-                                    </div>
+                                    <div key={i} className="w-8 h-8 flex items-center justify-center border border-slate-500 font-bold text-white bg-slate-800 rounded">{currentGuess[i] || ""}</div>
                                 ))}
                             </div>
                         )}
                     </div>
-                    
-                    {/* Keyboard */}
                     <div className="w-full space-y-1">
                         {rows.map((row, i) => (
                             <div key={i} className="flex justify-center gap-1">
                                 {row.split('').map(char => (
-                                    <button 
-                                        key={char} 
-                                        onClick={() => handleType(char)}
-                                        className="px-2 py-2 bg-slate-600 hover:bg-slate-500 rounded text-xs font-bold min-w-[28px]"
-                                    >{char}</button>
+                                    <button key={char} onClick={() => handleType(char)} className="px-2 py-2 bg-slate-600 hover:bg-slate-500 rounded text-xs font-bold min-w-[28px]">{char}</button>
                                 ))}
                             </div>
                         ))}
@@ -259,19 +249,10 @@
                 setAvailable(available.filter(i => i.id !== item.id));
 
                 if (newOrder.length === items.length) {
-                    // Check order
                     const ids = newOrder.map(i => i.id);
                     const isCorrect = ids.every((val, index) => val === correctOrder[index]);
-                    if (isCorrect) {
-                        onSolve(true);
-                    } else {
-                        setTimeout(() => {
-                            // Reset if wrong
-                            onSolve(false); 
-                            setCurrentOrder([]); 
-                            setAvailable(items);
-                        }, 1000);
-                    }
+                    if (isCorrect) onSolve(true);
+                    else setTimeout(() => { onSolve(false); setCurrentOrder([]); setAvailable(items); }, 1000);
                 }
             };
 
@@ -279,25 +260,17 @@
                 <div className="space-y-4">
                     <p className="text-sm text-slate-400">Click steps in correct priority order:</p>
                     <div className="flex flex-col gap-2">
-                         {/* Slots */}
                          {items.map((_, i) => (
                              <div key={i} className="h-10 border border-dashed border-slate-600 rounded flex items-center px-4 bg-slate-800/50">
                                  <span className="text-slate-500 mr-4">{i + 1}.</span>
-                                 {currentOrder[i] ? (
-                                     <span className="text-blue-300 font-bold">{currentOrder[i].text}</span>
-                                 ) : <span className="text-slate-600 italic">Empty</span>}
+                                 {currentOrder[i] ? <span className="text-blue-300 font-bold">{currentOrder[i].text}</span> : <span className="text-slate-600 italic">Empty</span>}
                              </div>
                          ))}
                     </div>
                     <div className="grid grid-cols-1 gap-2 mt-4">
                         {available.map(item => (
-                            <button 
-                                key={item.id}
-                                onClick={() => handleSelect(item)}
-                                className="bg-slate-700 hover:bg-blue-600 p-2 rounded text-left transition-colors flex items-center justify-between group"
-                            >
-                                {item.text}
-                                <Icons.ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100" />
+                            <button key={item.id} onClick={() => handleSelect(item)} className="bg-slate-700 hover:bg-blue-600 p-2 rounded text-left transition-colors flex items-center justify-between group">
+                                {item.text} <Icons.ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100" />
                             </button>
                         ))}
                     </div>
@@ -307,34 +280,17 @@
 
         const MathGame = ({ correctAnswer, onSolve }) => {
             const [val, setVal] = useState("");
-            
-            const check = () => {
-                if (val === correctAnswer) onSolve(true);
-                else onSolve(false);
-            };
-
+            const check = () => (val === correctAnswer) ? onSolve(true) : onSolve(false);
             return (
                 <div className="flex flex-col gap-4">
-                    <input 
-                        type="number" 
-                        value={val}
-                        onChange={(e) => setVal(e.target.value)}
-                        placeholder="Enter mg..."
-                        className="bg-slate-800 border border-slate-600 rounded p-3 text-white text-lg focus:border-blue-500 outline-none"
-                    />
-                    <button 
-                        onClick={check}
-                        className="bg-blue-600 hover:bg-blue-500 py-2 rounded font-bold"
-                    >
-                        Submit Calculation
-                    </button>
+                    <input type="number" value={val} onChange={(e) => setVal(e.target.value)} placeholder="Enter mg..." className="bg-slate-800 border border-slate-600 rounded p-3 text-white text-lg focus:border-blue-500 outline-none" />
+                    <button onClick={check} className="bg-blue-600 hover:bg-blue-500 py-2 rounded font-bold">Submit Calculation</button>
                 </div>
             );
         };
 
         const Modal = ({ isOpen, onClose, title, children, type = 'normal' }) => {
             if (!isOpen) return null;
-
             let headerColor = "bg-slate-800";
             if (type === 'success') headerColor = "bg-green-700";
             if (type === 'error') headerColor = "bg-red-700";
@@ -343,29 +299,19 @@
 
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-                    <div className={`w-full max-w-lg bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 max-h-[90vh] overflow-y-auto`}>
+                    <div className={`w-full max-w-lg w-[95%] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 max-h-[85vh] overflow-y-auto`}>
                         <div className={`${headerColor} px-6 py-4 flex justify-between items-center border-b border-slate-700 sticky top-0 z-10`}>
                         <h2 className="text-xl font-bold text-white font-serif tracking-wide">{title}</h2>
-                        {type !== 'intro' && type !== 'lost' && (
-                            <button onClick={onClose} className="text-slate-300 hover:text-white transition-colors">
-                                <Icons.XCircle className="w-6 h-6" />
-                            </button>
-                        )}
+                        {type !== 'intro' && type !== 'lost' && <button onClick={onClose} className="text-slate-300 hover:text-white transition-colors"><Icons.XCircle className="w-6 h-6" /></button>}
                         </div>
-                        <div className="p-6 text-slate-200">
-                        {children}
-                        </div>
+                        <div className="p-6 text-slate-200">{children}</div>
                     </div>
                 </div>
             );
         };
 
-        // --- GEMINI API HANDLER ---
         const callGemini = async (prompt, systemInstruction = "") => {
-            if (!GOOGLE_GEMINI_API_KEY) {
-                console.warn("API Key missing");
-                return "The Senior Resident is unavailable. (Note to instructor: Add API Key in index.html to enable hints).";
-            }
+            if (!GOOGLE_GEMINI_API_KEY) { console.warn("API Key missing"); return "The Senior Resident is unavailable. (Note to instructor: Add API Key in index.html to enable hints)."; }
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GOOGLE_GEMINI_API_KEY}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }], systemInstruction: { parts: [{ text: systemInstruction }] } };
             try {
@@ -373,12 +319,9 @@
                 if (!response.ok) throw new Error(`API Error: ${response.status}`);
                 const data = await response.json();
                 return data.candidates?.[0]?.content?.parts?.[0]?.text || "The AI is currently silent. Try again.";
-            } catch (error) {
-                return "Connection error. The Senior Resident is currently unavailable.";
-            }
+            } catch (error) { return "Connection error. The Senior Resident is currently unavailable."; }
         };
 
-        // --- MAIN COMPONENT ---
         const App = () => {
             const [gameState, setGameState] = useState('intro');
             const [solvedPuzzles, setSolvedPuzzles] = useState([]);
@@ -394,120 +337,81 @@
             const [aiHint, setAiHint] = useState("");
             const [aiDebrief, setAiDebrief] = useState("");
 
-            // Randomize Code
             useEffect(() => {
                 const digits = ["4", "7", "2", "9", "1"];
                 for (let i = digits.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [digits[i], digits[j]] = [digits[j], digits[i]];
                 }
-                const newCode = digits.join("");
-                setFinalCode(newCode);
-                console.log("Instructor Info: Random Code:", newCode);
+                setFinalCode(digits.join(""));
+                console.log("Instructor Info: Random Code:", digits.join(""));
             }, []);
 
-            // Timer
             useEffect(() => {
-                if (gameState === 'playing' && timeLeft > 0) {
-                    const timerId = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-                    return () => clearTimeout(timerId);
-                } else if (gameState === 'playing' && timeLeft === 0) {
-                    setGameState('lost');
-                }
+                if (gameState === 'playing' && timeLeft > 0) { const timerId = setTimeout(() => setTimeLeft(timeLeft - 1), 1000); return () => clearTimeout(timerId); }
+                else if (gameState === 'playing' && timeLeft === 0) { setGameState('lost'); }
             }, [timeLeft, gameState]);
 
             const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
-
-            const handlePuzzleClick = (puzzle) => {
-                setAiHint(""); 
-                if (solvedPuzzles.includes(puzzle.id)) {
-                    setFeedback({ type: 'success', message: `Solved! Clue digit: ${puzzle.digit}` });
-                } else {
-                    setCurrentPuzzle(puzzle);
-                }
-            };
-
-            const handleSuccess = (puzzle) => {
-                setSolvedPuzzles([...solvedPuzzles, puzzle.id]);
-                const position = finalCode.indexOf(puzzle.digit) + 1;
-                setFeedback({ type: 'success', message: `${puzzle.feedback.correct} Clue: Digit ${puzzle.digit} (Pos: ${position})` });
-                setCurrentPuzzle(null);
-                setAiHint("");
-            };
-
-            const handleFail = (msg) => {
-                setFeedback({ type: 'error', message: msg || "Incorrect. Try again." });
-            };
-
-            const handleKeypadSubmit = () => {
-                if (inputCode === finalCode) { setGameState('won'); setKeypadOpen(false); } 
-                else { setFeedback({ type: 'error', message: "Access Denied." }); setInputCode(""); }
-            };
-
-            // AI Functions
-            const fetchAIHint = async () => {
-                if (!currentPuzzle) return;
-                setAiLoading(true);
-                const sysPrompt = "You are a senior neurology resident. Give a Socratic hint. Do NOT give the answer.";
-                const usrPrompt = `Student is stuck on: ${currentPuzzle.question}. Type: ${currentPuzzle.type}. Hint?`;
-                const hint = await callGemini(usrPrompt, sysPrompt);
-                setAiHint(hint);
-                setAiLoading(false);
-            };
-
-            const fetchAIDebrief = async () => {
-                setAiLoading(true);
-                const debrief = await callGemini("Summarize learning points for Stroke: tPA dosing, Sequence of diagnostics, LVO windows, ACA symptoms, Penumbra.", "Medical Educator.");
-                setAiDebrief(debrief);
-                setAiLoading(false);
-            };
+            const handlePuzzleClick = (puzzle) => { setAiHint(""); if (solvedPuzzles.includes(puzzle.id)) { setFeedback({ type: 'success', message: `Solved! Clue digit: ${puzzle.digit}` }); } else { setCurrentPuzzle(puzzle); } };
+            const handleSuccess = (puzzle) => { setSolvedPuzzles([...solvedPuzzles, puzzle.id]); const position = finalCode.indexOf(puzzle.digit) + 1; setFeedback({ type: 'success', message: `${puzzle.feedback.correct} Clue: Digit ${puzzle.digit} (Pos: ${position})` }); setCurrentPuzzle(null); setAiHint(""); };
+            const handleFail = (msg) => { setFeedback({ type: 'error', message: msg || "Incorrect. Try again." }); };
+            const handleKeypadSubmit = () => { if (inputCode === finalCode) { setGameState('won'); setKeypadOpen(false); } else { setFeedback({ type: 'error', message: "Access Denied." }); setInputCode(""); } };
+            const fetchAIHint = async () => { if (!currentPuzzle) return; setAiLoading(true); const sys = "Senior resident. Socratic hint only."; const usr = `Stuck on: ${currentPuzzle.question}. Type: ${currentPuzzle.type}. Hint?`; const hint = await callGemini(usr, sys); setAiHint(hint); setAiLoading(false); };
+            const fetchAIDebrief = async () => { setAiLoading(true); const debrief = await callGemini("Summarize key Stroke learning points (tPA, sequence, windows, penumbra).", "Medical Educator."); setAiDebrief(debrief); setAiLoading(false); };
 
             return (
-                <div className="relative w-full h-screen bg-slate-950 overflow-hidden font-sans select-none text-slate-100">
-                    {/* Background */}
-                    <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
-                        <img src={imgSrc} className="w-full h-full object-cover opacity-80" onError={() => !imageError && (setImgSrc(GAME_CONFIG.fallbackImage), setImageError(true))} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none"></div>
-                    </div>
-
-                    {/* Header */}
-                    <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-between items-start bg-gradient-to-b from-black/90 to-transparent">
-                        <div><h1 className="text-2xl font-serif text-amber-500 tracking-wider shadow-black drop-shadow-md">{GAME_CONFIG.title}</h1><p className="text-slate-400 text-sm">Target: Healthcare Graduate Students</p></div>
-                        <div className="flex gap-4">
-                            <div className={`backdrop-blur border px-4 py-2 rounded-lg flex items-center gap-2 font-mono text-lg font-bold shadow-lg ${timeLeft < 60 ? 'bg-red-900/80 border-red-500 animate-pulse text-white' : 'bg-slate-900/80 border-slate-700 text-amber-400'}`}><Icons.Clock className="w-5 h-5" /><span>{formatTime(timeLeft)}</span></div>
-                            <div className="bg-slate-900/80 backdrop-blur border border-slate-700 px-4 py-2 rounded-lg flex items-center gap-2"><Icons.BookOpen className="w-4 h-4 text-blue-400" /><span className="text-sm font-bold">Clues: {solvedPuzzles.length} / 5</span></div>
-                            <button onClick={() => setKeypadOpen(true)} className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg shadow-lg font-bold flex items-center gap-2"><Icons.Lock className="w-4 h-4" /> UNLOCK</button>
+                <div className="relative flex flex-col items-center justify-center h-full w-full bg-black font-sans select-none text-slate-100 overflow-hidden">
+                    
+                    {/* Header HUD - Responsive */}
+                    <div className="fixed top-0 left-0 right-0 z-30 p-2 md:p-4 flex flex-col md:flex-row justify-between items-center bg-gradient-to-b from-black/90 to-transparent pointer-events-none">
+                        <div className="pointer-events-auto text-center md:text-left mb-2 md:mb-0">
+                            <h1 className="text-lg md:text-2xl font-serif text-amber-500 tracking-wider shadow-black drop-shadow-md">{GAME_CONFIG.title}</h1>
+                            <p className="text-slate-400 text-xs md:text-sm hidden md:block">Target: Healthcare Graduate Students</p>
+                        </div>
+                        <div className="flex gap-2 md:gap-4 pointer-events-auto">
+                            <div className={`backdrop-blur border px-3 py-1 md:px-4 md:py-2 rounded-lg flex items-center gap-2 font-mono text-sm md:text-lg font-bold shadow-lg ${timeLeft < 60 ? 'bg-red-900/80 border-red-500 animate-pulse text-white' : 'bg-slate-900/80 border-slate-700 text-amber-400'}`}><Icons.Clock className="w-4 h-4 md:w-5 md:h-5" /><span>{formatTime(timeLeft)}</span></div>
+                            <div className="bg-slate-900/80 backdrop-blur border border-slate-700 px-3 py-1 md:px-4 md:py-2 rounded-lg flex items-center gap-2"><Icons.BookOpen className="w-4 h-4 md:w-4 md:h-4 text-blue-400" /><span className="text-sm font-bold">{solvedPuzzles.length}/5</span></div>
+                            <button onClick={() => setKeypadOpen(true)} className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1 md:px-6 md:py-2 rounded-lg shadow-lg font-bold flex items-center gap-2 text-sm md:text-base"><Icons.Lock className="w-4 h-4" /> UNLOCK</button>
                         </div>
                     </div>
 
-                    {/* Game Area */}
-                    {gameState === 'playing' && (
-                        <div className="absolute inset-0 z-0">
-                            <div className="absolute cursor-pointer rounded-t-full" style={{ top: '35%', left: '35%', width: '8%', height: '15%' }} onClick={() => setKeypadOpen(true)} title="Exit Door"></div>
-                            {PUZZLES.map(p => <div key={p.id} className="absolute cursor-pointer" style={p.position} onClick={() => handlePuzzleClick(p)} title={p.title}></div>)}
+                    {/* Responsive Game Aspect Container */}
+                    <div className="relative w-full h-full max-w-[177.78vh] mx-auto shadow-2xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                        {/* Background Image */}
+                        <div className="absolute inset-0 z-0 bg-black">
+                            <img src={imgSrc} className="w-full h-full object-cover opacity-80" onError={() => !imageError && (setImgSrc(GAME_CONFIG.fallbackImage), setImageError(true))} />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none"></div>
                         </div>
-                    )}
 
-                    {/* Intro Modal */}
+                        {/* Interactive Layer */}
+                        {gameState === 'playing' && (
+                            <div className="absolute inset-0 z-10">
+                                {/* Exit Door - Top Center */}
+                                <div className="absolute cursor-pointer rounded-t-full" style={{ top: '35%', left: '46%', width: '8%', height: '15%' }} onClick={() => setKeypadOpen(true)} title="Exit Door"></div>
+                                {/* Puzzle Hitboxes */}
+                                {PUZZLES.map(p => <div key={p.id} className="absolute cursor-pointer" style={p.position} onClick={() => handlePuzzleClick(p)} title={p.title}></div>)}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Modals */}
                     <Modal isOpen={gameState === 'intro'} title="Mission Briefing" type="intro">
                         <div className="space-y-4">
                             <p className="text-lg leading-relaxed text-blue-100">{GAME_CONFIG.introText}</p>
-                            <div className="bg-slate-800 p-4 rounded-lg border border-slate-600 text-sm"><h3 className="font-bold text-amber-400 mb-2">Instructions:</h3><ul className="list-disc list-inside space-y-1 text-slate-300"><li>You have <strong>10 minutes</strong>.</li><li>Find 5 hidden clues (Click artifacts).</li><li>Solve puzzles (Calculations, Sequence, Wordle, Quiz).</li><li>Use the <strong>Consult Senior Resident</strong> if stuck.</li></ul></div>
+                            <div className="bg-slate-800 p-4 rounded-lg border border-slate-600 text-sm"><h3 className="font-bold text-amber-400 mb-2">Instructions:</h3><ul className="list-disc list-inside space-y-1 text-slate-300"><li>You have <strong>5 minutes</strong>.</li><li>Find 5 hidden clues (Click artifacts).</li><li>Solve puzzles (Calculations, Sequence, Wordle, Quiz).</li><li>Use the <strong>Consult Senior Resident</strong> if stuck.</li></ul></div>
                             <button onClick={() => setGameState('playing')} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-lg">START TIMER & ENTER</button>
                         </div>
                     </Modal>
 
-                    {/* Lost Modal */}
                     <Modal isOpen={gameState === 'lost'} title="TIME EXPIRED" type="lost">
                          <div className="text-center space-y-6"><Icons.AlertTriangle className="w-16 h-16 text-red-500 mx-auto" /><h2 className="text-2xl font-bold">Penumbra Lost.</h2><button onClick={() => window.location.reload()} className="w-full py-3 bg-red-700 text-white font-bold rounded-lg">TRY AGAIN</button></div>
                     </Modal>
 
-                    {/* Puzzle Modal */}
                     <Modal isOpen={!!currentPuzzle} title={currentPuzzle?.title || ""} onClose={() => setCurrentPuzzle(null)}>
                         <div className="space-y-6">
                             <p className="text-lg font-medium text-white whitespace-pre-wrap">{currentPuzzle?.question}</p>
                             
-                            {/* RENDER DIFFERENT PUZZLE TYPES */}
                             {currentPuzzle?.type === 'mc' && (
                                 <div className="space-y-3">
                                     {currentPuzzle.options.map(opt => (
@@ -518,19 +422,10 @@
                                 </div>
                             )}
 
-                            {currentPuzzle?.type === 'wordle' && (
-                                <WordleGame targetWord={currentPuzzle.targetWord} onSolve={() => handleSuccess(currentPuzzle)} />
-                            )}
+                            {currentPuzzle?.type === 'wordle' && <WordleGame targetWord={currentPuzzle.targetWord} onSolve={() => handleSuccess(currentPuzzle)} />}
+                            {currentPuzzle?.type === 'sequence' && <SequenceGame items={currentPuzzle.items} correctOrder={currentPuzzle.correctOrder} onSolve={(s) => s ? handleSuccess(currentPuzzle) : handleFail(currentPuzzle.feedback.wrong)} />}
+                            {currentPuzzle?.type === 'math' && <MathGame correctAnswer={currentPuzzle.correctAnswer} onSolve={(s) => s ? handleSuccess(currentPuzzle) : handleFail(currentPuzzle.feedback.wrong)} />}
 
-                            {currentPuzzle?.type === 'sequence' && (
-                                <SequenceGame items={currentPuzzle.items} correctOrder={currentPuzzle.correctOrder} onSolve={(s) => s ? handleSuccess(currentPuzzle) : handleFail(currentPuzzle.feedback.wrong)} />
-                            )}
-
-                            {currentPuzzle?.type === 'math' && (
-                                <MathGame correctAnswer={currentPuzzle.correctAnswer} onSolve={(s) => s ? handleSuccess(currentPuzzle) : handleFail(currentPuzzle.feedback.wrong)} />
-                            )}
-
-                            {/* AI Hint */}
                             <div className="mt-6 border-t border-slate-700 pt-4">
                                 {!aiHint && !aiLoading && <button onClick={fetchAIHint} className="w-full py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2"><Icons.Sparkles className="w-4 h-4" /> Consult Senior Resident (AI)</button>}
                                 {aiLoading && <div className="flex items-center gap-2 text-purple-300 text-sm animate-pulse"><Icons.Loader className="w-4 h-4 animate-spin" /> Resident thinking...</div>}
@@ -539,7 +434,6 @@
                         </div>
                     </Modal>
 
-                    {/* Keypad Modal */}
                     <Modal isOpen={keypadOpen} title="Security Lock" onClose={() => setKeypadOpen(false)}>
                         <div className="flex flex-col items-center space-y-6">
                             <div className="bg-black border-4 border-slate-700 rounded px-8 py-4 w-full text-center"><span className="font-mono text-4xl tracking-[0.5em] text-red-500 h-12 block">{inputCode.padEnd(5, '_')}</span></div>
@@ -552,16 +446,14 @@
                         </div>
                     </Modal>
 
-                    {/* Feedback Popup */}
-                    {feedback && <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-bounce-up"><div className={`px-6 py-4 rounded-lg shadow-2xl border flex items-center gap-3 ${feedback.type === 'success' ? 'bg-green-900/90 border-green-500 text-green-100' : 'bg-red-900/90 border-red-500 text-red-100'}`}>{feedback.type === 'success' ? <Icons.CheckCircle /> : <Icons.AlertCircle />}<span className="font-medium">{feedback.message}</span><button onClick={() => setFeedback(null)} className="ml-4 hover:opacity-75"><Icons.XCircle className="w-5 h-5"/></button></div></div>}
+                    {feedback && <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-bounce-up w-[90%] md:w-auto"><div className={`px-6 py-4 rounded-lg shadow-2xl border flex items-center gap-3 ${feedback.type === 'success' ? 'bg-green-900/90 border-green-500 text-green-100' : 'bg-red-900/90 border-red-500 text-red-100'}`}>{feedback.type === 'success' ? <Icons.CheckCircle className="shrink-0" /> : <Icons.AlertCircle className="shrink-0" />}<span className="font-medium text-sm md:text-base">{feedback.message}</span><button onClick={() => setFeedback(null)} className="ml-auto hover:opacity-75"><Icons.XCircle className="w-5 h-5"/></button></div></div>}
 
-                    {/* Victory Modal */}
                     {gameState === 'won' && (
                         <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/95 animate-fade-in text-center p-8 overflow-y-auto">
                             <Icons.DoorOpen className="w-24 h-24 text-green-500 mb-6 shrink-0" /><h1 className="text-5xl font-serif text-amber-500 mb-4">ESCAPED!</h1><p className="text-xl text-slate-300 max-w-2xl mb-8">You saved the brain.</p>
                             {!aiDebrief && !aiLoading && <button onClick={fetchAIDebrief} className="px-6 py-3 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-bold shadow-lg flex items-center gap-2 mx-auto"><Icons.Sparkles className="w-5 h-5" /> Clinical Debrief (AI)</button>}
                             {aiLoading && <div className="flex justify-center gap-2 text-purple-300 mt-4"><Icons.Loader className="w-6 h-6 animate-spin" /> Compiling...</div>}
-                            {aiDebrief && <div className="bg-slate-800 border border-slate-600 rounded-lg p-6 text-left animate-fade-in shadow-2xl mt-4"><div className="prose prose-invert prose-sm max-w-none text-slate-300 whitespace-pre-line">{aiDebrief}</div></div>}
+                            {aiDebrief && <div className="bg-slate-800 border border-slate-600 rounded-lg p-6 text-left animate-fade-in shadow-2xl mt-4 max-w-2xl"><div className="prose prose-invert prose-sm max-w-none text-slate-300 whitespace-pre-line">{aiDebrief}</div></div>}
                             <button onClick={() => window.location.reload()} className="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-slate-200">PLAY AGAIN</button>
                         </div>
                     )}
