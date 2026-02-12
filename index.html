@@ -73,7 +73,7 @@
             // IMPORTANT: This filename must match your uploaded file exactly
             bgImage: "Time Is Brain_ The Stroke Museum Heist.jpg", 
             fallbackImage: "https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=2070&auto=format&fit=crop",
-            timeLimitSeconds: 600 // 10 Minutes
+            timeLimitSeconds: 300 // 5 Minutes
         };
 
         const PUZZLES = [
@@ -274,9 +274,13 @@
             const handleAnswer = (option) => {
                 if (option.correct) {
                 setSolvedPuzzles([...solvedPuzzles, currentPuzzle.id]);
+                
+                // Calculate which position this digit is for (1-based index)
+                const position = GAME_CONFIG.finalCode.indexOf(option.digit) + 1;
+                
                 setFeedback({ 
                     type: 'success', 
-                    message: `${currentPuzzle.feedback.correct} You found a clue: Digit ${option.digit}` 
+                    message: `${currentPuzzle.feedback.correct} You found a clue: Digit ${option.digit} (Position: ${position})` 
                 });
                 setCurrentPuzzle(null);
                 setAiHint("");
