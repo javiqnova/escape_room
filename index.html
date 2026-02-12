@@ -23,32 +23,24 @@
         h1, h2, h3 { font-family: 'Merriweather', serif; }
         .animate-fade-in { animation: fadeIn 0.5s ease-out; }
         .animate-bounce-up { animation: bounceUp 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes bounceUp {
-            from { transform: translate(-50%, 100%); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bounceUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 overflow-hidden">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // ==================================================================================
         // INSTRUCTOR SETTINGS
         // ==================================================================================
-        
-        // 1. To enable the AI Senior Resident hints, paste your Google Gemini API Key below.
-        //    Get a free key here: https://aistudio.google.com/app/apikey
-        const GOOGLE_GEMINI_API_KEY = ""; 
+        const GOOGLE_GEMINI_API_KEY = ""; // Paste key here for hints
 
-        // 2. Game Configuration
         const GAME_CONFIG = {
             title: "Time Is Brain: The Stroke Museum Heist",
             introText: "You are locked in the Museum of Neurology. To escape, you must demonstrate your expertise in acute stroke management. Find 5 clues hidden within the artifacts to unlock the main exit. Remember: Time is Brain.",
@@ -59,73 +51,75 @@
 
         // ==================================================================================
 
-        // --- ICON COMPONENTS (Inline SVGs) ---
+        // --- ICON COMPONENTS ---
         const Icon = ({ path, className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                {path}
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
         );
-
         const Icons = {
-            Lock: (props) => <Icon {...props} path={<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>} />,
-            Unlock: (props) => <Icon {...props} path={<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></>} />,
-            AlertCircle: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>} />,
-            CheckCircle: (props) => <Icon {...props} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />,
-            XCircle: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></>} />,
-            BookOpen: (props) => <Icon {...props} path={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>} />,
-            Clock: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>} />,
-            Brain: (props) => <Icon {...props} path={<><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></>} />,
-            Activity: (props) => <Icon {...props} path={<><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>} />,
-            User: (props) => <Icon {...props} path={<><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />,
-            DoorOpen: (props) => <Icon {...props} path={<><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></>} />,
-            Sparkles: (props) => <Icon {...props} path={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 9h4"/><path d="M3 5h4"/></>} />,
-            MessageSquare: (props) => <Icon {...props} path={<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></>} />,
-            Loader: (props) => <Icon {...props} path={<><path d="M21 12a9 9 0 1 1-6.219-8.56"/></>} />,
-            AlertTriangle: (props) => <Icon {...props} path={<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>} />,
+            Lock: (p) => <Icon {...p} path={<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>} />,
+            Unlock: (p) => <Icon {...p} path={<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></>} />,
+            AlertCircle: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>} />,
+            CheckCircle: (p) => <Icon {...p} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />,
+            XCircle: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></>} />,
+            BookOpen: (p) => <Icon {...p} path={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>} />,
+            Clock: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>} />,
+            Brain: (p) => <Icon {...p} path={<><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></>} />,
+            Activity: (p) => <Icon {...p} path={<><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>} />,
+            User: (p) => <Icon {...p} path={<><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />,
+            DoorOpen: (p) => <Icon {...p} path={<><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></>} />,
+            Sparkles: (p) => <Icon {...p} path={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 9h4"/><path d="M3 5h4"/></>} />,
+            MessageSquare: (p) => <Icon {...p} path={<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></>} />,
+            Loader: (p) => <Icon {...p} path={<><path d="M21 12a9 9 0 1 1-6.219-8.56"/></>} />,
+            AlertTriangle: (p) => <Icon {...p} path={<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>} />,
+            ArrowRight: (p) => <Icon {...p} path={<><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></>} />,
         };
 
         const PUZZLES = [
             {
                 id: 'hourglass',
-                title: 'The Sands of Time',
+                title: 'Dosing Calculation Protocol',
+                type: 'math',
                 position: { bottom: '5%', right: '10%', width: '15%', height: '30%' },
-                question: "A 65-year-old patient arrives with right-sided hemiparesis. The Last Known Well (LKW) time was exactly 3.5 hours ago. There are no contraindications. What is the standard maximum time window for IV thrombolysis (alteplase) in eligible patients?",
-                options: [
-                { id: 'a', text: "3.0 hours", correct: false },
-                { id: 'b', text: "4.5 hours", correct: true, digit: '4' },
-                { id: 'c', text: "6.0 hours", correct: false },
-                { id: 'd', text: "24 hours", correct: false }
-                ],
+                // UPDATED: Patient weight changed to 176 lbs (approx 80kg)
+                question: "Patient weight: 176 lbs. \nStandard IV tPA dose: 0.9 mg/kg. \nMax dose: 90 mg. \n\nCalculate the BOLUS dose (10% of total) in mg. (Round weight to nearest whole kg).",
+                correctAnswer: "7.2",
+                digit: '4',
                 feedback: {
-                correct: "Correct. The window for IV thrombolysis is up to 4.5 hours for select patients (ECASS III trial data).",
-                wrong: "Incorrect. While the original window was 3 hours, guidelines extended this for eligible patients."
+                    correct: "Correct. 176 lbs ≈ 80 kg. Total dose = 72mg. Bolus (10%) = 7.2mg administered over 1 minute.",
+                    wrong: "Incorrect calculation. First convert lbs to kg (divide by 2.2). Then 0.9mg/kg * weight = Total. Then take 10% of that."
                 }
             },
             {
                 id: 'mri',
-                title: 'The Diagnostic Machine',
+                title: 'The Diagnostic Sequence',
+                type: 'sequence',
                 position: { top: '40%', left: '42%', width: '16%', height: '20%' },
-                question: "A patient presents with acute stroke symptoms. Upon arrival at the ED, what is the single most critical INITIAL diagnostic test to perform before considering fibrinolytic therapy?",
-                options: [
-                { id: 'a', text: "MRI Brain with Diffusion", correct: false },
-                { id: 'b', text: "Carotid Doppler Ultrasound", correct: false },
-                { id: 'c', text: "Non-contrast CT Head", correct: true, digit: '7' },
-                { id: 'd', text: "Lumbar Puncture", correct: false }
+                question: "A patient arrives with suspected stroke. Select the initial actions in the CORRECT priority order (1-4) according to AHA/ASA guidelines.",
+                items: [
+                    { id: 'ct', text: "Non-Contrast Head CT" },
+                    { id: 'glucose', text: "Check Blood Glucose" },
+                    { id: 'history', text: "Establish Last Known Well" },
+                    { id: 'interpret', text: "Interpret CT (Bleed vs Ischemia)" }
                 ],
+                correctOrder: ['glucose', 'history', 'ct', 'interpret'],
+                digit: '7',
                 feedback: {
-                correct: "Correct. A Non-contrast CT is mandatory to rule out intracranial hemorrhage before giving tPA.",
-                wrong: "Incorrect. While MRI is sensitive, a Non-contrast CT is the standard first-line rapid image to rule out bleed."
+                    correct: "Correct. We must rule out hypoglycemia first, establish LKW to determine eligibility, then CT, then interpret.",
+                    wrong: "Incorrect sequence. Always rule out mimics (glucose) and establish timing before sending to CT."
                 }
             },
             {
                 id: 'clot',
                 title: 'The Clot Display',
+                type: 'mc',
                 position: { top: '15%', right: '2%', width: '20%', height: '40%' },
                 question: "A patient has a Large Vessel Occlusion (LVO) in the internal carotid artery. According to DAWN and DEFUSE-3 trials, mechanical thrombectomy is indicated up to how many hours after LKW in select patients?",
+                // UPDATED: Moved digit here to prevent 'undefined' error
+                digit: '2', 
                 options: [
                 { id: 'a', text: "6 hours", correct: false },
                 { id: 'b', text: "12 hours", correct: false },
-                { id: 'c', text: "24 hours", correct: true, digit: '2' },
+                { id: 'c', text: "24 hours", correct: true },
                 { id: 'd', text: "48 hours", correct: false }
                 ],
                 feedback: {
@@ -136,12 +130,15 @@
             {
                 id: 'statue',
                 title: 'The Patient Statue',
+                type: 'mc',
                 position: { top: '28%', right: '25%', width: '10%', height: '35%' },
                 question: "You examine a patient who has significant weakness in the LEFT LEG, but minimal weakness in the left arm and face. They also appear apathetic (abulia). Which vascular territory is most likely affected?",
+                // UPDATED: Moved digit here to prevent 'undefined' error
+                digit: '9',
                 options: [
                 { id: 'a', text: "Left Middle Cerebral Artery (MCA)", correct: false },
                 { id: 'b', text: "Right Middle Cerebral Artery (MCA)", correct: false },
-                { id: 'c', text: "Right Anterior Cerebral Artery (ACA)", correct: true, digit: '9' },
+                { id: 'c', text: "Right Anterior Cerebral Artery (ACA)", correct: true },
                 { id: 'd', text: "Basilar Artery", correct: false }
                 ],
                 feedback: {
@@ -151,54 +148,189 @@
             },
             {
                 id: 'brain',
-                title: 'The Giant Brain',
+                title: 'The Salvageable Zone',
+                type: 'wordle',
                 position: { top: '10%', left: '0%', width: '30%', height: '60%' },
-                question: "In acute ischemic stroke, there is a core of irreversible infarction surrounded by a zone of hypoperfused but potentially salvageable tissue. What is this salvageable zone called?",
-                options: [
-                { id: 'a', text: "The Penumbra", correct: true, digit: '1' },
-                { id: 'b', text: "The Watershed", correct: false },
-                { id: 'c', text: "The Lacune", correct: false },
-                { id: 'd', text: "The Gliosis", correct: false }
-                ],
+                question: "WORD CHALLENGE: In acute ischemic stroke, there is a core of irreversible infarction surrounded by a zone of hypoperfused but potentially salvageable tissue. \n\nGuess the 8-letter medical term.",
+                targetWord: "PENUMBRA",
+                digit: '1',
                 feedback: {
-                correct: "Correct. The Penumbra is the target of acute reperfusion therapies.",
-                wrong: "Incorrect. Try again. It refers to the 'shadow' area around the core."
+                    correct: "Correct! The PENUMBRA is the target of acute reperfusion therapies.",
+                    wrong: "Focus. It starts with P."
                 }
             }
         ];
 
-        // --- GEMINI API HANDLER ---
-        const callGemini = async (prompt, systemInstruction = "") => {
-            if (!GOOGLE_GEMINI_API_KEY) {
-                console.warn("API Key missing");
-                return "The Senior Resident is unavailable. (Note to instructor: Add API Key in index.html to enable hints).";
-            }
+        // --- SUB-GAMES ---
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GOOGLE_GEMINI_API_KEY}`;
+        const WordleGame = ({ targetWord, onSolve }) => {
+            const [guesses, setGuesses] = useState([]);
+            const [currentGuess, setCurrentGuess] = useState("");
+            const [solved, setSolved] = useState(false);
+            const maxLength = targetWord.length;
 
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] }
+            const handleType = (char) => {
+                if (solved) return;
+                if (currentGuess.length < maxLength) {
+                    setCurrentGuess(prev => prev + char.toUpperCase());
+                }
             };
 
-            try {
-                const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-                });
+            const handleBackspace = () => {
+                setCurrentGuess(prev => prev.slice(0, -1));
+            };
 
-                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            const handleSubmit = () => {
+                if (currentGuess.length !== maxLength) return;
+                const newGuesses = [...guesses, currentGuess];
+                setGuesses(newGuesses);
+                
+                if (currentGuess === targetWord) {
+                    setSolved(true);
+                    setTimeout(() => onSolve(), 1500);
+                }
+                setCurrentGuess("");
+            };
 
-                const data = await response.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || "The AI is currently silent. Try again.";
-            } catch (error) {
-                console.error("Gemini API Error:", error);
-                return "Connection error. The Senior Resident is currently unavailable.";
-            }
+            const getLetterColor = (letter, index, guess) => {
+                if (targetWord[index] === letter) return "bg-green-600 border-green-600";
+                if (targetWord.includes(letter)) return "bg-yellow-600 border-yellow-600";
+                return "bg-slate-700 border-slate-600";
+            };
+
+            // Virtual Keyboard
+            const rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+
+            return (
+                <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+                    <div className="mb-4 space-y-1">
+                        {/* Previous Guesses */}
+                        {guesses.map((guess, i) => (
+                            <div key={i} className="flex gap-1 justify-center">
+                                {guess.split('').map((char, j) => (
+                                    <div key={j} className={`w-8 h-8 flex items-center justify-center border font-bold text-white rounded ${getLetterColor(char, j, guess)}`}>
+                                        {char}
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                        {/* Current Guess */}
+                        {!solved && guesses.length < 6 && (
+                            <div className="flex gap-1 justify-center">
+                                {[...Array(maxLength)].map((_, i) => (
+                                    <div key={i} className="w-8 h-8 flex items-center justify-center border border-slate-500 font-bold text-white bg-slate-800 rounded">
+                                        {currentGuess[i] || ""}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Keyboard */}
+                    <div className="w-full space-y-1">
+                        {rows.map((row, i) => (
+                            <div key={i} className="flex justify-center gap-1">
+                                {row.split('').map(char => (
+                                    <button 
+                                        key={char} 
+                                        onClick={() => handleType(char)}
+                                        className="px-2 py-2 bg-slate-600 hover:bg-slate-500 rounded text-xs font-bold min-w-[28px]"
+                                    >{char}</button>
+                                ))}
+                            </div>
+                        ))}
+                        <div className="flex justify-center gap-2 mt-2">
+                             <button onClick={handleBackspace} className="px-4 py-2 bg-red-800 hover:bg-red-700 rounded text-xs font-bold">DEL</button>
+                             <button onClick={handleSubmit} className="px-4 py-2 bg-green-700 hover:bg-green-600 rounded text-xs font-bold">ENTER</button>
+                        </div>
+                    </div>
+                    {guesses.length >= 6 && !solved && <p className="text-red-400 mt-2 text-sm">Out of attempts! Try again.</p>}
+                </div>
+            );
         };
 
-        // --- COMPONENTS ---
+        const SequenceGame = ({ items, correctOrder, onSolve }) => {
+            const [currentOrder, setCurrentOrder] = useState([]);
+            const [available, setAvailable] = useState(items);
+
+            const handleSelect = (item) => {
+                const newOrder = [...currentOrder, item];
+                setCurrentOrder(newOrder);
+                setAvailable(available.filter(i => i.id !== item.id));
+
+                if (newOrder.length === items.length) {
+                    // Check order
+                    const ids = newOrder.map(i => i.id);
+                    const isCorrect = ids.every((val, index) => val === correctOrder[index]);
+                    if (isCorrect) {
+                        onSolve(true);
+                    } else {
+                        setTimeout(() => {
+                            // Reset if wrong
+                            onSolve(false); 
+                            setCurrentOrder([]); 
+                            setAvailable(items);
+                        }, 1000);
+                    }
+                }
+            };
+
+            return (
+                <div className="space-y-4">
+                    <p className="text-sm text-slate-400">Click steps in correct priority order:</p>
+                    <div className="flex flex-col gap-2">
+                         {/* Slots */}
+                         {items.map((_, i) => (
+                             <div key={i} className="h-10 border border-dashed border-slate-600 rounded flex items-center px-4 bg-slate-800/50">
+                                 <span className="text-slate-500 mr-4">{i + 1}.</span>
+                                 {currentOrder[i] ? (
+                                     <span className="text-blue-300 font-bold">{currentOrder[i].text}</span>
+                                 ) : <span className="text-slate-600 italic">Empty</span>}
+                             </div>
+                         ))}
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 mt-4">
+                        {available.map(item => (
+                            <button 
+                                key={item.id}
+                                onClick={() => handleSelect(item)}
+                                className="bg-slate-700 hover:bg-blue-600 p-2 rounded text-left transition-colors flex items-center justify-between group"
+                            >
+                                {item.text}
+                                <Icons.ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const MathGame = ({ correctAnswer, onSolve }) => {
+            const [val, setVal] = useState("");
+            
+            const check = () => {
+                if (val === correctAnswer) onSolve(true);
+                else onSolve(false);
+            };
+
+            return (
+                <div className="flex flex-col gap-4">
+                    <input 
+                        type="number" 
+                        value={val}
+                        onChange={(e) => setVal(e.target.value)}
+                        placeholder="Enter mg..."
+                        className="bg-slate-800 border border-slate-600 rounded p-3 text-white text-lg focus:border-blue-500 outline-none"
+                    />
+                    <button 
+                        onClick={check}
+                        className="bg-blue-600 hover:bg-blue-500 py-2 rounded font-bold"
+                    >
+                        Submit Calculation
+                    </button>
+                </div>
+            );
+        };
 
         const Modal = ({ isOpen, onClose, title, children, type = 'normal' }) => {
             if (!isOpen) return null;
@@ -228,347 +360,211 @@
             );
         };
 
+        // --- GEMINI API HANDLER ---
+        const callGemini = async (prompt, systemInstruction = "") => {
+            if (!GOOGLE_GEMINI_API_KEY) {
+                console.warn("API Key missing");
+                return "The Senior Resident is unavailable. (Note to instructor: Add API Key in index.html to enable hints).";
+            }
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GOOGLE_GEMINI_API_KEY}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }], systemInstruction: { parts: [{ text: systemInstruction }] } };
+            try {
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "The AI is currently silent. Try again.";
+            } catch (error) {
+                return "Connection error. The Senior Resident is currently unavailable.";
+            }
+        };
+
+        // --- MAIN COMPONENT ---
         const App = () => {
-            const [gameState, setGameState] = useState('intro'); // intro, playing, locked, won, lost
+            const [gameState, setGameState] = useState('intro');
             const [solvedPuzzles, setSolvedPuzzles] = useState([]);
             const [currentPuzzle, setCurrentPuzzle] = useState(null);
             const [keypadOpen, setKeypadOpen] = useState(false);
             const [inputCode, setInputCode] = useState("");
             const [feedback, setFeedback] = useState(null);
-            
-            // Random Code State
             const [finalCode, setFinalCode] = useState("");
-            
-            // Timer State
             const [timeLeft, setTimeLeft] = useState(GAME_CONFIG.timeLimitSeconds);
-            
-            // Image State
             const [imgSrc, setImgSrc] = useState(GAME_CONFIG.bgImage);
             const [imageError, setImageError] = useState(false);
-
-            // AI State
             const [aiLoading, setAiLoading] = useState(false);
             const [aiHint, setAiHint] = useState("");
             const [aiDebrief, setAiDebrief] = useState("");
 
-            // Initialization Effect (Randomize Code)
+            // Randomize Code
             useEffect(() => {
                 const digits = ["4", "7", "2", "9", "1"];
-                // Simple shuffle algorithm (Fisher-Yates)
                 for (let i = digits.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [digits[i], digits[j]] = [digits[j], digits[i]];
                 }
                 const newCode = digits.join("");
                 setFinalCode(newCode);
-                console.log("Instructor Info: The Random Escape Code is:", newCode);
+                console.log("Instructor Info: Random Code:", newCode);
             }, []);
 
-            // Timer Effect
+            // Timer
             useEffect(() => {
                 if (gameState === 'playing' && timeLeft > 0) {
-                const timerId = setTimeout(() => {
-                    setTimeLeft(timeLeft - 1);
-                }, 1000);
-                return () => clearTimeout(timerId);
+                    const timerId = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+                    return () => clearTimeout(timerId);
                 } else if (gameState === 'playing' && timeLeft === 0) {
-                setGameState('lost');
+                    setGameState('lost');
                 }
             }, [timeLeft, gameState]);
 
-            const formatTime = (seconds) => {
-                const m = Math.floor(seconds / 60);
-                const s = seconds % 60;
-                return `${m}:${s < 10 ? '0' : ''}${s}`;
-            };
+            const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
             const handlePuzzleClick = (puzzle) => {
                 setAiHint(""); 
                 if (solvedPuzzles.includes(puzzle.id)) {
-                setFeedback({ 
-                    type: 'success', 
-                    message: `You have already solved this. The clue digit is: ${puzzle.options.find(o => o.correct).digit}` 
-                });
+                    setFeedback({ type: 'success', message: `Solved! Clue digit: ${puzzle.digit}` });
                 } else {
-                setCurrentPuzzle(puzzle);
+                    setCurrentPuzzle(puzzle);
                 }
             };
 
-            const handleAnswer = (option) => {
-                if (option.correct) {
-                setSolvedPuzzles([...solvedPuzzles, currentPuzzle.id]);
-                
-                // Determine the position in the RANDOMIZED code
-                // Note: finalCode is generated at start. We find where this specific digit lives in that string.
-                const position = finalCode.indexOf(option.digit) + 1;
-                
-                setFeedback({ 
-                    type: 'success', 
-                    message: `${currentPuzzle.feedback.correct} You found a clue: Digit ${option.digit} (Position: ${position})` 
-                });
+            const handleSuccess = (puzzle) => {
+                setSolvedPuzzles([...solvedPuzzles, puzzle.id]);
+                const position = finalCode.indexOf(puzzle.digit) + 1;
+                setFeedback({ type: 'success', message: `${puzzle.feedback.correct} Clue: Digit ${puzzle.digit} (Pos: ${position})` });
                 setCurrentPuzzle(null);
                 setAiHint("");
-                } else {
-                setFeedback({ 
-                    type: 'error', 
-                    message: currentPuzzle.feedback.wrong 
-                });
-                }
+            };
+
+            const handleFail = (msg) => {
+                setFeedback({ type: 'error', message: msg || "Incorrect. Try again." });
             };
 
             const handleKeypadSubmit = () => {
-                if (inputCode === finalCode) {
-                setGameState('won');
-                setKeypadOpen(false);
-                } else {
-                setFeedback({ type: 'error', message: "Access Denied. The code is incorrect." });
-                setInputCode("");
-                }
+                if (inputCode === finalCode) { setGameState('won'); setKeypadOpen(false); } 
+                else { setFeedback({ type: 'error', message: "Access Denied." }); setInputCode(""); }
             };
 
-            const handleKeypadInput = (num) => {
-                if (inputCode.length < 5) {
-                setInputCode(prev => prev + num);
-                }
-            };
-
+            // AI Functions
             const fetchAIHint = async () => {
                 if (!currentPuzzle) return;
                 setAiLoading(true);
-                setAiHint("");
-                
-                const correctAnswer = currentPuzzle.options.find(o => o.correct).text;
-                
-                const systemPrompt = "You are a senior neurology resident mentoring a medical student. Be helpful, encouraging, but Socratic. Do NOT give the direct answer. Provide a clinical hint or explain the underlying pathophysiology that guides them to the correct option.";
-                const userPrompt = `The student is looking at this question: "${currentPuzzle.question}". The options are: ${currentPuzzle.options.map(o => o.text).join(', ')}. The correct answer is "${correctAnswer}". Give a short hint (max 2 sentences) to help them figure it out.`;
-
-                const hint = await callGemini(userPrompt, systemPrompt);
+                const sysPrompt = "You are a senior neurology resident. Give a Socratic hint. Do NOT give the answer.";
+                const usrPrompt = `Student is stuck on: ${currentPuzzle.question}. Type: ${currentPuzzle.type}. Hint?`;
+                const hint = await callGemini(usrPrompt, sysPrompt);
                 setAiHint(hint);
                 setAiLoading(false);
             };
 
             const fetchAIDebrief = async () => {
                 setAiLoading(true);
-                const systemPrompt = "You are a medical educator specializing in stroke neurology. Summarize the key learning points from a case simulation.";
-                const userPrompt = "The student has successfully completed a simulation covering: 4.5hr IV tPA window, Non-contrast CT as initial diagnostic, 24hr Thrombectomy window (DAWN/DEFUSE-3), Anterior Cerebral Artery (ACA) syndrome symptoms, and the concept of Penumbra. Write a brief, bulleted 'Clinical Debrief' (max 4 bullets) summarizing these key takeaways for them to remember.";
-
-                const debrief = await callGemini(userPrompt, systemPrompt);
+                const debrief = await callGemini("Summarize learning points for Stroke: tPA dosing, Sequence of diagnostics, LVO windows, ACA symptoms, Penumbra.", "Medical Educator.");
                 setAiDebrief(debrief);
                 setAiLoading(false);
             };
 
             return (
                 <div className="relative w-full h-screen bg-slate-950 overflow-hidden font-sans select-none text-slate-100">
-                
-                {/* Background Image Container */}
-                <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
-                    <img 
-                        src={imgSrc} 
-                        alt="Stroke Museum" 
-                        className="w-full h-full object-cover opacity-80"
-                        onError={() => {
-                        if (!imageError) {
-                            setImgSrc(GAME_CONFIG.fallbackImage);
-                            setImageError(true);
-                        }
-                        }}
-                    />
-                    {imageError && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-yellow-900/80 text-yellow-200 px-4 py-1 rounded-full text-xs border border-yellow-700 z-50">
-                        Using fallback image. Ensure filename matches exactly in GAME_CONFIG.
+                    {/* Background */}
+                    <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
+                        <img src={imgSrc} className="w-full h-full object-cover opacity-80" onError={() => !imageError && (setImgSrc(GAME_CONFIG.fallbackImage), setImageError(true))} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none"></div>
                     </div>
+
+                    {/* Header */}
+                    <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-between items-start bg-gradient-to-b from-black/90 to-transparent">
+                        <div><h1 className="text-2xl font-serif text-amber-500 tracking-wider shadow-black drop-shadow-md">{GAME_CONFIG.title}</h1><p className="text-slate-400 text-sm">Target: Healthcare Graduate Students</p></div>
+                        <div className="flex gap-4">
+                            <div className={`backdrop-blur border px-4 py-2 rounded-lg flex items-center gap-2 font-mono text-lg font-bold shadow-lg ${timeLeft < 60 ? 'bg-red-900/80 border-red-500 animate-pulse text-white' : 'bg-slate-900/80 border-slate-700 text-amber-400'}`}><Icons.Clock className="w-5 h-5" /><span>{formatTime(timeLeft)}</span></div>
+                            <div className="bg-slate-900/80 backdrop-blur border border-slate-700 px-4 py-2 rounded-lg flex items-center gap-2"><Icons.BookOpen className="w-4 h-4 text-blue-400" /><span className="text-sm font-bold">Clues: {solvedPuzzles.length} / 5</span></div>
+                            <button onClick={() => setKeypadOpen(true)} className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg shadow-lg font-bold flex items-center gap-2"><Icons.Lock className="w-4 h-4" /> UNLOCK</button>
+                        </div>
+                    </div>
+
+                    {/* Game Area */}
+                    {gameState === 'playing' && (
+                        <div className="absolute inset-0 z-0">
+                            <div className="absolute cursor-pointer rounded-t-full" style={{ top: '35%', left: '35%', width: '8%', height: '15%' }} onClick={() => setKeypadOpen(true)} title="Exit Door"></div>
+                            {PUZZLES.map(p => <div key={p.id} className="absolute cursor-pointer" style={p.position} onClick={() => handlePuzzleClick(p)} title={p.title}></div>)}
+                        </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none"></div>
-                </div>
 
-                {/* HEADER HUD */}
-                <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-between items-start bg-gradient-to-b from-black/90 to-transparent">
-                    <div>
-                    <h1 className="text-2xl font-serif text-amber-500 tracking-wider shadow-black drop-shadow-md">
-                        {GAME_CONFIG.title}
-                    </h1>
-                    <p className="text-slate-400 text-sm">Target: Healthcare Graduate Students</p>
-                    </div>
-                    
-                    <div className="flex gap-4">
-                    {/* Timer */}
-                    <div className={`backdrop-blur border px-4 py-2 rounded-lg flex items-center gap-2 font-mono text-lg font-bold shadow-lg ${timeLeft < 60 ? 'bg-red-900/80 border-red-500 animate-pulse text-white' : 'bg-slate-900/80 border-slate-700 text-amber-400'}`}>
-                        <Icons.Clock className="w-5 h-5" />
-                        <span>{formatTime(timeLeft)}</span>
-                    </div>
-
-                    <div className="bg-slate-900/80 backdrop-blur border border-slate-700 px-4 py-2 rounded-lg flex items-center gap-2">
-                        <Icons.BookOpen className="w-4 h-4 text-blue-400" />
-                        <span className="text-sm font-bold">Clues: {solvedPuzzles.length} / 5</span>
-                    </div>
-                    <button 
-                        onClick={() => setKeypadOpen(true)}
-                        className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg shadow-lg shadow-amber-900/50 flex items-center gap-2 transition-all transform hover:scale-105 font-bold"
-                    >
-                        <Icons.Lock className="w-4 h-4" />
-                        UNLOCK
-                    </button>
-                    </div>
-                </div>
-
-                {/* GAME AREA */}
-                {gameState === 'playing' && (
-                    <div className="absolute inset-0 z-0">
-                    {/* Exit Door */}
-                    <div 
-                        className="absolute cursor-pointer transition-colors duration-300 rounded-t-full"
-                        style={{ top: '35%', left: '35%', width: '8%', height: '15%' }}
-                        onClick={() => setKeypadOpen(true)}
-                        title="Exit Door"
-                    ></div>
-
-                    {/* Puzzles */}
-                    {PUZZLES.map((puzzle) => (
-                        <div
-                        key={puzzle.id}
-                        className="absolute cursor-pointer"
-                        style={puzzle.position}
-                        onClick={() => handlePuzzleClick(puzzle)}
-                        title={puzzle.title} 
-                        ></div>
-                    ))}
-                    </div>
-                )}
-
-                {/* INTRO MODAL */}
-                <Modal isOpen={gameState === 'intro'} title="Mission Briefing" type="intro" onClose={() => {}}>
-                    <div className="space-y-4">
-                    <p className="text-lg leading-relaxed text-blue-100">{GAME_CONFIG.introText}</p>
-                    <div className="bg-slate-800 p-4 rounded-lg border border-slate-600 text-sm">
-                        <h3 className="font-bold text-amber-400 mb-2">Instructions:</h3>
-                        <ul className="list-disc list-inside space-y-1 text-slate-300">
-                        <li>You have <strong>10 minutes</strong> before the penumbra is lost.</li>
-                        <li>Explore the museum by clicking on artifacts (zones are hidden).</li>
-                        <li>Answer 5 multiple-choice questions correctly to get the code.</li>
-                        <li>Use the <strong>Consult Senior Resident</strong> button if stuck.</li>
-                        </ul>
-                    </div>
-                    <button onClick={() => setGameState('playing')} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-lg transition-transform transform hover:scale-[1.02]">
-                        START TIMER & ENTER
-                    </button>
-                    </div>
-                </Modal>
-
-                {/* LOST MODAL */}
-                <Modal isOpen={gameState === 'lost'} title="TIME EXPIRED" type="lost" onClose={() => {}}>
-                    <div className="space-y-6 text-center">
-                    <Icons.AlertTriangle className="w-16 h-16 text-red-500 mx-auto" />
-                    <div className="space-y-2">
-                        <h2 className="text-2xl font-bold text-white">The Penumbra is Lost.</h2>
-                        <p className="text-slate-300">You failed to treat the patient within the critical time window. In stroke care, every minute counts.</p>
-                    </div>
-                    <button onClick={() => window.location.reload()} className="w-full py-3 bg-red-700 hover:bg-red-600 text-white rounded-lg font-bold shadow-lg transition-transform transform hover:scale-[1.02]">TRY AGAIN</button>
-                    </div>
-                </Modal>
-
-                {/* PUZZLE MODAL */}
-                <Modal isOpen={!!currentPuzzle} title={currentPuzzle?.title || ""} onClose={() => setCurrentPuzzle(null)}>
-                    <div className="space-y-6">
-                    <p className="text-lg font-medium text-white">{currentPuzzle?.question}</p>
-                    <div className="space-y-3">
-                        {currentPuzzle?.options.map((option) => (
-                        <button
-                            key={option.id}
-                            onClick={() => handleAnswer(option)}
-                            className="w-full text-left p-4 rounded-lg bg-slate-800 border border-slate-600 hover:bg-blue-900/50 hover:border-blue-400 transition-all group"
-                        >
-                            <span className="font-bold text-blue-400 mr-2 group-hover:text-white">{option.id.toUpperCase()}.</span>
-                            {option.text}
-                        </button>
-                        ))}
-                    </div>
-
-                    <div className="mt-6 border-t border-slate-700 pt-4">
-                        {!aiHint && !aiLoading && (
-                        <button onClick={fetchAIHint} className="w-full py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg">
-                            <Icons.Sparkles className="w-4 h-4" /> Consult Senior Resident for a Hint (AI)
-                        </button>
-                        )}
-                        
-                        {aiLoading && (
-                        <div className="flex items-center gap-2 text-purple-300 text-sm animate-pulse">
-                            <Icons.Loader className="w-4 h-4 animate-spin" /> The resident is thinking...
+                    {/* Intro Modal */}
+                    <Modal isOpen={gameState === 'intro'} title="Mission Briefing" type="intro">
+                        <div className="space-y-4">
+                            <p className="text-lg leading-relaxed text-blue-100">{GAME_CONFIG.introText}</p>
+                            <div className="bg-slate-800 p-4 rounded-lg border border-slate-600 text-sm"><h3 className="font-bold text-amber-400 mb-2">Instructions:</h3><ul className="list-disc list-inside space-y-1 text-slate-300"><li>You have <strong>10 minutes</strong>.</li><li>Find 5 hidden clues (Click artifacts).</li><li>Solve puzzles (Calculations, Sequence, Wordle, Quiz).</li><li>Use the <strong>Consult Senior Resident</strong> if stuck.</li></ul></div>
+                            <button onClick={() => setGameState('playing')} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-lg">START TIMER & ENTER</button>
                         </div>
-                        )}
+                    </Modal>
 
-                        {aiHint && (
-                        <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3 mt-2 animate-fade-in">
-                            <div className="flex gap-2 items-start">
-                            <Icons.MessageSquare className="w-5 h-5 text-purple-400 shrink-0 mt-1" />
-                            <div>
-                                <p className="text-xs text-purple-300 font-bold mb-1">Senior Resident says:</p>
-                                <p className="text-sm text-purple-100 italic">"{aiHint}"</p>
-                            </div>
+                    {/* Lost Modal */}
+                    <Modal isOpen={gameState === 'lost'} title="TIME EXPIRED" type="lost">
+                         <div className="text-center space-y-6"><Icons.AlertTriangle className="w-16 h-16 text-red-500 mx-auto" /><h2 className="text-2xl font-bold">Penumbra Lost.</h2><button onClick={() => window.location.reload()} className="w-full py-3 bg-red-700 text-white font-bold rounded-lg">TRY AGAIN</button></div>
+                    </Modal>
+
+                    {/* Puzzle Modal */}
+                    <Modal isOpen={!!currentPuzzle} title={currentPuzzle?.title || ""} onClose={() => setCurrentPuzzle(null)}>
+                        <div className="space-y-6">
+                            <p className="text-lg font-medium text-white whitespace-pre-wrap">{currentPuzzle?.question}</p>
+                            
+                            {/* RENDER DIFFERENT PUZZLE TYPES */}
+                            {currentPuzzle?.type === 'mc' && (
+                                <div className="space-y-3">
+                                    {currentPuzzle.options.map(opt => (
+                                        <button key={opt.id} onClick={() => opt.correct ? handleSuccess(currentPuzzle) : handleFail(currentPuzzle.feedback.wrong)} className="w-full text-left p-4 rounded-lg bg-slate-800 border border-slate-600 hover:bg-blue-900/50 hover:border-blue-400 transition-all font-bold text-blue-400">
+                                            <span className="mr-2 text-white">{opt.text}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {currentPuzzle?.type === 'wordle' && (
+                                <WordleGame targetWord={currentPuzzle.targetWord} onSolve={() => handleSuccess(currentPuzzle)} />
+                            )}
+
+                            {currentPuzzle?.type === 'sequence' && (
+                                <SequenceGame items={currentPuzzle.items} correctOrder={currentPuzzle.correctOrder} onSolve={(s) => s ? handleSuccess(currentPuzzle) : handleFail(currentPuzzle.feedback.wrong)} />
+                            )}
+
+                            {currentPuzzle?.type === 'math' && (
+                                <MathGame correctAnswer={currentPuzzle.correctAnswer} onSolve={(s) => s ? handleSuccess(currentPuzzle) : handleFail(currentPuzzle.feedback.wrong)} />
+                            )}
+
+                            {/* AI Hint */}
+                            <div className="mt-6 border-t border-slate-700 pt-4">
+                                {!aiHint && !aiLoading && <button onClick={fetchAIHint} className="w-full py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2"><Icons.Sparkles className="w-4 h-4" /> Consult Senior Resident (AI)</button>}
+                                {aiLoading && <div className="flex items-center gap-2 text-purple-300 text-sm animate-pulse"><Icons.Loader className="w-4 h-4 animate-spin" /> Resident thinking...</div>}
+                                {aiHint && <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3 mt-2"><div className="flex gap-2"><Icons.MessageSquare className="w-5 h-5 text-purple-400 mt-1" /><div><p className="text-xs text-purple-300 font-bold">Resident:</p><p className="text-sm text-purple-100 italic">{aiHint}</p></div></div></div>}
                             </div>
                         </div>
-                        )}
-                    </div>
-                    </div>
-                </Modal>
+                    </Modal>
 
-                {/* KEYPAD MODAL */}
-                <Modal isOpen={keypadOpen} title="Security Lock" onClose={() => setKeypadOpen(false)}>
-                    <div className="flex flex-col items-center space-y-6">
-                    <div className="bg-black border-4 border-slate-700 rounded px-8 py-4 w-full text-center">
-                        <span className="font-mono text-4xl tracking-[0.5em] text-red-500 h-12 block">{inputCode.padEnd(5, '_')}</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 w-full max-w-[250px]">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                        <button key={num} onClick={() => handleKeypadInput(num.toString())} className="bg-slate-700 hover:bg-slate-600 text-white text-xl font-bold py-4 rounded shadow-inner active:scale-95 transition-all">{num}</button>
-                        ))}
-                        <button onClick={() => setInputCode("")} className="bg-red-900/80 hover:bg-red-800 text-white font-bold py-4 rounded">CLR</button>
-                        <button onClick={() => handleKeypadInput("0")} className="bg-slate-700 hover:bg-slate-600 text-white text-xl font-bold py-4 rounded">0</button>
-                        <button onClick={handleKeypadSubmit} className="bg-green-700 hover:bg-green-600 text-white font-bold py-4 rounded">ENT</button>
-                    </div>
-                    </div>
-                </Modal>
-
-                {/* FEEDBACK POPUP */}
-                {feedback && (
-                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-bounce-up">
-                    <div className={`px-6 py-4 rounded-lg shadow-2xl border flex items-center gap-3 ${
-                        feedback.type === 'success' ? 'bg-green-900/90 border-green-500 text-green-100' : 'bg-red-900/90 border-red-500 text-red-100'
-                    }`}>
-                        {feedback.type === 'success' ? <Icons.CheckCircle /> : <Icons.AlertCircle />}
-                        <span className="font-medium">{feedback.message}</span>
-                        <button onClick={() => setFeedback(null)} className="ml-4 hover:opacity-75"><Icons.XCircle className="w-5 h-5"/></button>
-                    </div>
-                    </div>
-                )}
-
-                {/* VICTORY MODAL */}
-                {gameState === 'won' && (
-                    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/95 animate-fade-in text-center p-8 overflow-y-auto">
-                    <Icons.DoorOpen className="w-24 h-24 text-green-500 mb-6 shrink-0" />
-                    <h1 className="text-5xl font-serif text-amber-500 mb-4">ESCAPED!</h1>
-                    <p className="text-xl text-slate-300 max-w-2xl mb-8">Congratulations. You have demonstrated excellent knowledge of acute stroke protocols.</p>
-                    
-                    <div className="w-full max-w-2xl mb-8">
-                        {!aiDebrief && !aiLoading && (
-                        <button onClick={fetchAIDebrief} className="px-6 py-3 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-bold shadow-lg flex items-center gap-2 mx-auto transition-all">
-                            <Icons.Sparkles className="w-5 h-5" /> Generate Clinical Debrief (AI)
-                        </button>
-                        )}
-                        {aiLoading && (
-                        <div className="flex justify-center items-center gap-2 text-purple-300 mt-4">
-                            <Icons.Loader className="w-6 h-6 animate-spin" /> <span className="animate-pulse">Compiling performance review...</span>
+                    {/* Keypad Modal */}
+                    <Modal isOpen={keypadOpen} title="Security Lock" onClose={() => setKeypadOpen(false)}>
+                        <div className="flex flex-col items-center space-y-6">
+                            <div className="bg-black border-4 border-slate-700 rounded px-8 py-4 w-full text-center"><span className="font-mono text-4xl tracking-[0.5em] text-red-500 h-12 block">{inputCode.padEnd(5, '_')}</span></div>
+                            <div className="grid grid-cols-3 gap-3 w-full max-w-[250px]">
+                                {[1,2,3,4,5,6,7,8,9].map(n => <button key={n} onClick={() => setInputCode(p => p.length < 5 ? p + n : p)} className="bg-slate-700 hover:bg-slate-600 text-white text-xl font-bold py-4 rounded shadow-inner active:scale-95">{n}</button>)}
+                                <button onClick={() => setInputCode("")} className="bg-red-900/80 hover:bg-red-800 text-white font-bold py-4 rounded">CLR</button>
+                                <button onClick={() => setInputCode(p => p.length < 5 ? p + '0' : p)} className="bg-slate-700 hover:bg-slate-600 text-white text-xl font-bold py-4 rounded">0</button>
+                                <button onClick={handleKeypadSubmit} className="bg-green-700 hover:bg-green-600 text-white font-bold py-4 rounded">ENT</button>
+                            </div>
                         </div>
-                        )}
-                        {aiDebrief && (
-                        <div className="bg-slate-800 border border-slate-600 rounded-lg p-6 text-left animate-fade-in shadow-2xl">
-                            <h3 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2"><Icons.Activity className="w-5 h-5" /> Clinical Debrief:</h3>
-                            <div className="prose prose-invert prose-sm max-w-none text-slate-300 whitespace-pre-line">{aiDebrief}</div>
+                    </Modal>
+
+                    {/* Feedback Popup */}
+                    {feedback && <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-bounce-up"><div className={`px-6 py-4 rounded-lg shadow-2xl border flex items-center gap-3 ${feedback.type === 'success' ? 'bg-green-900/90 border-green-500 text-green-100' : 'bg-red-900/90 border-red-500 text-red-100'}`}>{feedback.type === 'success' ? <Icons.CheckCircle /> : <Icons.AlertCircle />}<span className="font-medium">{feedback.message}</span><button onClick={() => setFeedback(null)} className="ml-4 hover:opacity-75"><Icons.XCircle className="w-5 h-5"/></button></div></div>}
+
+                    {/* Victory Modal */}
+                    {gameState === 'won' && (
+                        <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/95 animate-fade-in text-center p-8 overflow-y-auto">
+                            <Icons.DoorOpen className="w-24 h-24 text-green-500 mb-6 shrink-0" /><h1 className="text-5xl font-serif text-amber-500 mb-4">ESCAPED!</h1><p className="text-xl text-slate-300 max-w-2xl mb-8">You saved the brain.</p>
+                            {!aiDebrief && !aiLoading && <button onClick={fetchAIDebrief} className="px-6 py-3 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-bold shadow-lg flex items-center gap-2 mx-auto"><Icons.Sparkles className="w-5 h-5" /> Clinical Debrief (AI)</button>}
+                            {aiLoading && <div className="flex justify-center gap-2 text-purple-300 mt-4"><Icons.Loader className="w-6 h-6 animate-spin" /> Compiling...</div>}
+                            {aiDebrief && <div className="bg-slate-800 border border-slate-600 rounded-lg p-6 text-left animate-fade-in shadow-2xl mt-4"><div className="prose prose-invert prose-sm max-w-none text-slate-300 whitespace-pre-line">{aiDebrief}</div></div>}
+                            <button onClick={() => window.location.reload()} className="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-slate-200">PLAY AGAIN</button>
                         </div>
-                        )}
-                    </div>
-                    <button onClick={() => window.location.reload()} className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-slate-200 transition-colors">PLAY AGAIN</button>
-                    </div>
-                )}
+                    )}
                 </div>
             );
         };
